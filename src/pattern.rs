@@ -12,9 +12,16 @@ pub(crate) enum Status {
     Rescore,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Default)]
+pub enum Variant {
+    #[default]
+    Default,
+    Optional,
+}
+
 #[derive(Debug)]
 pub struct MultiPattern {
-    cols: Vec<(Pattern, Status)>,
+    cols: Vec<(Pattern, Status, Variant)>,
 }
 
 impl Clone for MultiPattern {
@@ -35,6 +42,10 @@ impl MultiPattern {
         Self {
             cols: vec![Default::default(); columns],
         }
+    }
+
+    pub fn configure_column(&mut self, index: usize, variant: Variant) {
+        self.cols[index].2 = variant
     }
 
     /// Reparses a column. By specifying `append` the caller promises that text passed
@@ -74,27 +85,28 @@ impl MultiPattern {
     pub(crate) fn status(&self) -> Status {
         self.cols
             .iter()
-            .map(|&(_, status)| status)
+            .map(|x| x.1)
             .max()
             .unwrap_or(Status::Unchanged)
     }
 
     pub(crate) fn reset_status(&mut self) {
-        for (_, status) in &mut self.cols {
+        for (_, status, ..) in &mut self.cols {
             *status = Status::Unchanged
         }
     }
 
     pub fn score(&self, haystack: &[Utf32String], matcher: &mut Matcher) -> Option<u32> {
-        // TODO: wheight columns?
+        // TODO: column weights as a feature?
         let mut score = 0;
-        for ((pattern, _), haystack) in self.cols.iter().zip(haystack) {
-            score += pattern.score(haystack.slice(..), matcher)?
+        for ((pattern, _, variant), haystack) in self.cols.iter().zip(haystack) {
+            let fallback = matches!(variant, Variant::Optional).then_some(0);
+            score += pattern.score(haystack.slice(..), matcher).or(fallback)?;
         }
-        Some(score)
+        (score > 0).then_some(score)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.cols.iter().all(|(pat, _)| pat.atoms.is_empty())
+        self.cols.iter().all(|(pat, ..)| pat.atoms.is_empty())
     }
 }

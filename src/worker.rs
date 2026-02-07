@@ -29,7 +29,7 @@ pub(crate) struct Worker<T: Sync + Send + 'static> {
     matchers: Matchers,
     pub(crate) matches: Vec<Match>,
     pub(crate) pattern: MultiPattern,
-    pub(crate) sort_results: bool,
+    pub(crate) stability_threshold: u32,
     pub(crate) reverse_items: bool,
     pub(crate) canceled: Arc<AtomicBool>,
     pub(crate) should_notify: Arc<AtomicBool>,
@@ -49,8 +49,8 @@ impl<T: Sync + Send + 'static> Worker<T> {
             matcher.get_mut().config = config.clone();
         }
     }
-    pub(crate) fn sort_results(&mut self, sort_results: bool) {
-        self.sort_results = sort_results;
+    pub(crate) fn sort_results(&mut self, stability_threshold: u32) {
+        self.stability_threshold = stability_threshold;
     }
     pub(crate) fn reverse_items(&mut self, reverse_items: bool) {
         self.reverse_items = reverse_items;
@@ -79,7 +79,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
             matches: Vec::new(),
             // just a placeholder
             pattern: MultiPattern::new(cols as usize),
-            sort_results: true,
+            stability_threshold: 0,
             reverse_items: false,
             canceled: Arc::new(AtomicBool::new(false)),
             should_notify: Arc::new(AtomicBool::new(false)),
@@ -230,19 +230,30 @@ impl<T: Sync + Send + 'static> Worker<T> {
     }
 
     unsafe fn sort_matches(&mut self) -> bool {
-        if self.sort_results {
+        if self.stability_threshold != u32::MAX {
+            let threshold = self.stability_threshold;
             par_quicksort(
                 &mut self.matches,
                 |match1, match2| {
-                    if match1.score != match2.score {
-                        return match1.score > match2.score;
+                    let s1 = match1.score / threshold.max(1);
+                    let s2 = match2.score / threshold.max(1);
+
+                    if s1 == s2 {
+                        if threshold != 0 {
+                            return match1.idx < match2.idx;
+                        }
+                    } else {
+                        return s1 > s2;
                     }
+
+                    // threshold = 0, s1 = s2
                     if match1.idx == u32::MAX {
                         return false;
                     }
                     if match2.idx == u32::MAX {
                         return true;
                     }
+
                     // the tie breaker is comparatively rarely needed so we keep it
                     // in a branch especially because we need to access the items
                     // array here which involves some pointer chasing

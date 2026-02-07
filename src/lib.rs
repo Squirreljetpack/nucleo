@@ -379,7 +379,14 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
     // Set whether the matcher should sort search results by score after
     // matching. Defaults to true.
     pub fn sort_results(&mut self, sort_results: bool) {
-        self.worker.lock().sort_results(sort_results)
+        self.worker
+            .lock()
+            .sort_results(if sort_results { 0 } else { u32::MAX })
+    }
+
+    /// Scores in the same threshold level are sorted by original index.
+    pub fn set_stability(&mut self, threshold: u32) {
+        self.worker.lock().sort_results(threshold)
     }
 
     // Set whether the matcher should reverse the order of the input.
