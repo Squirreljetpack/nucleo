@@ -389,6 +389,10 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
         self.worker.lock().sort_results(threshold)
     }
 
+    pub fn get_stability(&self) -> u32 {
+        self.worker.lock().stability_threshold
+    }
+
     // Set whether the matcher should reverse the order of the input.
     // Defaults to false.
     pub fn reverse_items(&mut self, reverse_items: bool) {
