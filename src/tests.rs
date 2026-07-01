@@ -31,7 +31,9 @@ fn custom_sorting() {
     let mut nucleo: Nucleo<String> = Nucleo::new(Config::DEFAULT, Arc::new(|| ()), Some(1), 1);
 
     // Set custom sorting function: sort by String length ascending
-    nucleo.sort_with(Some(Arc::new(|(_, a), (_, b)| a.len().cmp(&b.len()))));
+    nucleo.sort_with(Some(Arc::new(|(_, a), (_, b)| {
+        a.len().cmp(&b.len()) == std::cmp::Ordering::Less
+    })));
 
     let injector = nucleo.injector();
     injector.push("banana".to_string(), |s, cols| cols[0] = s.clone().into());
@@ -73,7 +75,9 @@ fn custom_sorting_immediate() {
     }
 
     // Now set custom sorting function: sort by String length ascending
-    nucleo.sort_with(Some(Arc::new(|(_, a), (_, b)| a.len().cmp(&b.len()))));
+    nucleo.sort_with(Some(Arc::new(|(_, a), (_, b)| {
+        a.len().cmp(&b.len()) == std::cmp::Ordering::Less
+    })));
     nucleo.resort();
 
     // Second tick: should start the resort in the background

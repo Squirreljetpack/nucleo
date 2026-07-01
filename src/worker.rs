@@ -1,5 +1,4 @@
 use std::cell::UnsafeCell;
-use std::cmp::Ordering;
 use std::mem::take;
 use std::sync::atomic::{self, AtomicBool, AtomicU32};
 use std::sync::Arc;
@@ -39,7 +38,7 @@ pub(crate) struct Worker<T: Sync + Send + 'static> {
     notify: Arc<dyn Fn() + Sync + Send>,
     pub(crate) items: Arc<boxcar::Vec<T>>,
     in_flight: Vec<u32>,
-    pub(crate) custom_sort: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> Ordering + Send + Sync>>,
+    pub(crate) custom_sort: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> bool + Send + Sync>>,
 }
 
 impl<T: Sync + Send + 'static> Worker<T> {
@@ -233,91 +232,115 @@ impl<T: Sync + Send + 'static> Worker<T> {
     }
 
     unsafe fn sort_matches(&mut self) -> bool {
-        if let Some(ref custom_sort) = self.custom_sort {
-            par_quicksort(
-                &mut self.matches,
-                |match1, match2| {
-                    if match1.idx == u32::MAX {
-                        return false;
-                    }
-                    if match2.idx == u32::MAX {
-                        return true;
-                    }
-                    let item1 = self.items.get_unchecked(match1.idx);
-                    let item2 = self.items.get_unchecked(match2.idx);
-                    custom_sort((match1.idx, item1.data), (match2.idx, item2.data)) == Ordering::Less
-                },
-                &self.canceled,
-            )
-        } else if self.stability_threshold != u32::MAX {
-            let threshold = self.stability_threshold;
-            par_quicksort(
-                &mut self.matches,
-                |match1, match2| {
-                    let s1 = match1.score / threshold.max(1);
-                    let s2 = match2.score / threshold.max(1);
-
-                    if s1 == s2 {
-                        if threshold != 0 {
-                            return match1.idx < match2.idx;
+        macro_rules! execute_sort {
+            (|$m1:ident, $m2:ident| $logic:expr) => {
+                par_quicksort(
+                    &mut self.matches,
+                    |$m1, $m2| {
+                        if $m1.idx == u32::MAX {
+                            return false;
                         }
-                    } else {
-                        return s1 > s2;
-                    }
+                        if $m2.idx == u32::MAX {
+                            return true;
+                        }
+                        $logic
+                    },
+                    &self.canceled,
+                )
+            };
+        }
 
-                    // threshold = 0, s1 = s2
-                    if match1.idx == u32::MAX {
-                        return false;
-                    }
-                    if match2.idx == u32::MAX {
-                        return true;
-                    }
+        match (self.custom_sort.as_ref(), self.stability_threshold) {
+            // ---------------------------------------------------------
+            // VARIANTS WITH CUSTOM SORT
+            // ---------------------------------------------------------
 
-                    // the tie breaker is comparatively rarely needed so we keep it
-                    // in a branch especially because we need to access the items
-                    // array here which involves some pointer chasing
-                    let item1 = self.items.get_unchecked(match1.idx);
-                    let item2 = &self.items.get_unchecked(match2.idx);
-                    let len1: u32 = item1
-                        .matcher_columns
-                        .iter()
-                        .map(|haystack| haystack.len() as u32)
-                        .sum();
-                    let len2 = item2
-                        .matcher_columns
-                        .iter()
-                        .map(|haystack| haystack.len() as u32)
-                        .sum();
-                    if len1 == len2 {
-                        if self.reverse_items {
-                            match2.idx < match1.idx
+            // Variant 1: Match based + Custom fallback
+            (Some(custom_sort), 0) => {
+                execute_sort!(|m1, m2| {
+                    if m1.score == m2.score {
+                        let item1 = self.items.get_unchecked(m1.idx);
+                        let item2 = &self.items.get_unchecked(m2.idx);
+                        let len1: u32 = item1.matcher_columns.iter().map(|h| h.len() as u32).sum();
+                        let len2: u32 = item2.matcher_columns.iter().map(|h| h.len() as u32).sum();
+
+                        if len1 == len2 {
+                            custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
+                                ^ self.reverse_items
                         } else {
-                            match1.idx < match2.idx
+                            len1 < len2
                         }
                     } else {
-                        len1 < len2
+                        m1.score > m2.score
                     }
-                },
-                &self.canceled,
-            )
-        } else {
-            par_quicksort(
-                &mut self.matches,
-                |match1, match2| {
-                    if match1.idx == u32::MAX {
-                        return false;
-                    }
-                    if match2.idx == u32::MAX {
-                        return true;
-                    }
-                    if self.reverse_items {
-                        match2.idx < match1.idx
+                })
+            }
+
+            // Variant 2: Custom sort
+            (Some(custom_sort), u32::MAX) => {
+                execute_sort!(|m1, m2| {
+                    let item1 = self.items.get_unchecked(m1.idx);
+                    let item2 = self.items.get_unchecked(m2.idx);
+                    custom_sort((m1.idx, item1.data), (m2.idx, item2.data)) ^ self.reverse_items
+                })
+            }
+
+            // Variant 3: Custom Sort + Threshold > 0
+            (Some(custom_sort), t) => {
+                execute_sort!(|m1, m2| {
+                    let s1 = m1.score / t;
+                    let s2 = m2.score / t;
+                    if s1 == s2 {
+                        let item1 = self.items.get_unchecked(m1.idx);
+                        let item2 = self.items.get_unchecked(m2.idx);
+                        custom_sort((m1.idx, item1.data), (m2.idx, item2.data)) ^ self.reverse_items
                     } else {
-                        match1.idx < match2.idx
+                        s1 > s2
                     }
-                },
-                &self.canceled,
-            )
+                })
+            }
+
+            // ---------------------------------------------------------
+            // VARIANTS WITHOUT CUSTOM SORT
+            // ---------------------------------------------------------
+
+            // Variant 4: Match based
+            (None, 0) => {
+                execute_sort!(|m1, m2| {
+                    if m1.score == m2.score {
+                        let item1 = self.items.get_unchecked(m1.idx);
+                        let item2 = &self.items.get_unchecked(m2.idx);
+                        let len1: u32 = item1.matcher_columns.iter().map(|h| h.len() as u32).sum();
+                        let len2: u32 = item2.matcher_columns.iter().map(|h| h.len() as u32).sum();
+
+                        if len1 == len2 {
+                            (m1.idx < m2.idx) ^ self.reverse_items
+                        } else {
+                            len1 < len2
+                        }
+                    } else {
+                        m1.score > m2.score
+                    }
+                })
+            }
+
+            // Variant 5: Idx based
+            (None, u32::MAX) => {
+                execute_sort!(|m1, m2| (m1.idx < m2.idx) ^ self.reverse_items)
+            }
+
+            // Variant 6: Threshold (Idx)
+            (None, t) => {
+                execute_sort!(|m1, m2| {
+                    let s1 = m1.score / t;
+                    let s2 = m2.score / t;
+                    if s1 == s2 {
+                        (m1.idx < m2.idx) ^ self.reverse_items
+                    } else {
+                        s1 > s2
+                    }
+                })
+            }
         }
     }
 

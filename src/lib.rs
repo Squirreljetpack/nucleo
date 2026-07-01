@@ -388,11 +388,11 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
 
     /// Sets a custom sorting function.
     ///
-    /// If `Some(sort_fn)` is provided, matching candidates will be sorted using the custom function
-    /// instead of the default scoring and/or stability thresholds.
+    /// If `Some(sort_fn)` is provided, the role of index comparison in sorted will use the custom function.
+    /// To sort by the given fn, set stability (i.e. to u32::MAX) or else the sort_fn only replaces the index fallback.
     pub fn sort_with(
         &mut self,
-        sort_fn: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> std::cmp::Ordering + Send + Sync>>,
+        sort_fn: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> bool + Send + Sync>>,
     ) {
         self.worker.lock().custom_sort = sort_fn;
     }
