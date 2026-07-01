@@ -1,4 +1,5 @@
 use std::cell::UnsafeCell;
+use std::cmp::Ordering;
 use std::mem::take;
 use std::sync::atomic::{self, AtomicBool, AtomicU32};
 use std::sync::Arc;
@@ -38,6 +39,7 @@ pub(crate) struct Worker<T: Sync + Send + 'static> {
     notify: Arc<dyn Fn() + Sync + Send>,
     pub(crate) items: Arc<boxcar::Vec<T>>,
     in_flight: Vec<u32>,
+    pub(crate) custom_sort: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> Ordering + Send + Sync>>,
 }
 
 impl<T: Sync + Send + 'static> Worker<T> {
@@ -87,6 +89,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
             notify,
             items: Arc::new(boxcar::Vec::with_capacity(2 * 1024, cols)),
             in_flight: Vec::with_capacity(64),
+            custom_sort: None,
         };
         (pool, worker)
     }
@@ -230,7 +233,23 @@ impl<T: Sync + Send + 'static> Worker<T> {
     }
 
     unsafe fn sort_matches(&mut self) -> bool {
-        if self.stability_threshold != u32::MAX {
+        if let Some(ref custom_sort) = self.custom_sort {
+            par_quicksort(
+                &mut self.matches,
+                |match1, match2| {
+                    if match1.idx == u32::MAX {
+                        return false;
+                    }
+                    if match2.idx == u32::MAX {
+                        return true;
+                    }
+                    let item1 = self.items.get_unchecked(match1.idx);
+                    let item2 = self.items.get_unchecked(match2.idx);
+                    custom_sort((match1.idx, item1.data), (match2.idx, item2.data)) == Ordering::Less
+                },
+                &self.canceled,
+            )
+        } else if self.stability_threshold != u32::MAX {
             let threshold = self.stability_threshold;
             par_quicksort(
                 &mut self.matches,

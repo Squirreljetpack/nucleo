@@ -290,6 +290,7 @@ pub struct Nucleo<T: Sync + Send + 'static> {
     /// Note that the matcher worker will only become aware of the new pattern
     /// after a call to [`tick`](Nucleo::tick).
     pub pattern: MultiPattern,
+    resort_needed: bool,
 }
 
 impl<T: Sync + Send + 'static> Nucleo<T> {
@@ -328,6 +329,7 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
             worker: Arc::new(Mutex::new(worker)),
             state: State::Init,
             notify,
+            resort_needed: false,
         }
     }
 
@@ -384,6 +386,17 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
             .sort_results(if sort_results { 0 } else { u32::MAX })
     }
 
+    /// Sets a custom sorting function.
+    ///
+    /// If `Some(sort_fn)` is provided, matching candidates will be sorted using the custom function
+    /// instead of the default scoring and/or stability thresholds.
+    pub fn sort_with(
+        &mut self,
+        sort_fn: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> std::cmp::Ordering + Send + Sync>>,
+    ) {
+        self.worker.lock().custom_sort = sort_fn;
+    }
+
     /// Scores in the same threshold level are sorted by original index.
     pub fn set_stability(&mut self, threshold: u32) {
         self.worker.lock().sort_results(threshold)
@@ -397,6 +410,12 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
     // Defaults to false.
     pub fn reverse_items(&mut self, reverse_items: bool) {
         self.worker.lock().reverse_items(reverse_items)
+    }
+
+    /// Explicitly triggers a resort of the matched candidates on the next call to [`tick`](Nucleo::tick).
+    pub fn resort(&mut self) {
+        self.resort_needed = true;
+        (self.notify)();
     }
 
     /// The main way to interact with the matcher, this should be called
@@ -436,7 +455,7 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
 
         let changed = inner.running;
 
-        let running = canceled || self.items.count() > inner.item_count();
+        let running = canceled || self.items.count() > inner.item_count() || self.resort_needed;
         if inner.running {
             inner.running = false;
             if !inner.was_canceled && !self.state.canceled() {
@@ -444,6 +463,7 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
             }
         }
         if running {
+            self.resort_needed = false;
             inner.pattern.clone_from(&self.pattern);
             self.canceled.store(false, atomic::Ordering::Relaxed);
             if !canceled {
