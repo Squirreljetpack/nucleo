@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use nucleo_matcher::Config;
+use crate::matcher_inner::Config;
 
 use crate::Nucleo;
 

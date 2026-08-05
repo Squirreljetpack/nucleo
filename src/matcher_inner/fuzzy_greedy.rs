@@ -1,5 +1,5 @@
-use crate::chars::Char;
-use crate::Matcher;
+use crate::matcher_inner::Matcher;
+use crate::matcher_inner::chars::Char;
 
 impl Matcher {
     /// greedy fallback algorithm, much faster (linear time) but reported scores/indicies

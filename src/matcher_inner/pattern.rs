@@ -2,12 +2,12 @@
 
 use std::cmp::Reverse;
 
-use crate::{chars, Matcher, Utf32Str};
+use crate::matcher_inner::{Matcher, Utf32Str, chars};
 
 #[cfg(test)]
 mod tests;
 
-use crate::Utf32String;
+use crate::matcher_inner::Utf32String;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[non_exhaustive]

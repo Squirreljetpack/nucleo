@@ -1,10 +1,10 @@
-use std::alloc::{alloc_zeroed, dealloc, handle_alloc_error, Layout};
+use std::alloc::{Layout, alloc_zeroed, dealloc, handle_alloc_error};
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::ptr::{slice_from_raw_parts_mut, NonNull};
+use std::ptr::{NonNull, slice_from_raw_parts_mut};
 
-use crate::chars::Char;
+use crate::matcher_inner::chars::Char;
 
 const MAX_MATRIX_SIZE: usize = 100 * 1024; // 100*1024 = 100KB
 

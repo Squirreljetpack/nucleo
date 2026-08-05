@@ -17,6 +17,28 @@ Nucleo is used in the helix-editor and therefore has a large user base with lots
 
 While the high level `nucleo` crate also works well (and is also used in helix), there are still additional features that will be added in the future. The high level crate also need better documentation and will likely see a few API changes in the future.
 
+## Development
+
+### Fuzzing
+
+The `fuzz/` directory contains a [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) harness for the matcher. Run it from the repo root:
+
+```sh
+./fuzz.sh run
+```
+
+See [`fuzz/README.md`](fuzz/README.md) for details.
+
+### Regenerating the case-fold table
+
+The matcher's Unicode case folding data is generated from the Unicode Character Database. To regenerate `src/matcher_inner/chars/case_fold.rs` (e.g. after a UCD update):
+
+```sh
+./generate_case_fold_table.sh
+```
+
+This downloads UCD 15.0.0 and runs `ucd-generate case-folding-simple`. Requires `curl`, `unzip`, and `cargo`.
+
 ## Benchmarks
 
 > WIP currently more of a demonstration than a comprehensive benchmark suit

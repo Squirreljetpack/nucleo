@@ -1,3 +1,3 @@
 default.extend-ignore-re = ["\\\\u\\{[0-9A-Za-z]*\\}"]
 [files]
-extend-exclude = ["matcher/src/tests.rs","src/pattern/tests.rs", "*.html"]
+extend-exclude = ["src/matcher_inner/tests.rs","src/matcher_inner/pattern/tests.rs", "src/matcher_inner/utf32_str/tests.rs", "src/pattern/tests.rs", "*.html"]

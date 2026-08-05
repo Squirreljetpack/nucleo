@@ -1,5 +1,5 @@
-pub use nucleo_matcher::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
-use nucleo_matcher::{Matcher, Utf32String};
+pub use crate::matcher_inner::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
+use crate::matcher_inner::{Matcher, Utf32String};
 
 #[cfg(test)]
 mod tests;

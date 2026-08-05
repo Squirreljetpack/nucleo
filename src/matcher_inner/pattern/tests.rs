@@ -1,4 +1,4 @@
-use crate::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
+use crate::matcher_inner::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
 
 #[test]
 fn negative() {

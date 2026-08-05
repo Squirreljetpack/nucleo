@@ -1,6 +1,6 @@
 #![no_main]
 
-use fzf_oxide::{chars, Matcher, MatcherConfig, Utf32Str};
+use matchmaker_nucleo::{chars, Config, Matcher, Utf32Str};
 use libfuzzer_sys::arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
@@ -14,7 +14,7 @@ pub struct Input<'a> {
 
 fuzz_target!(|data: Input<'_>| {
     let mut data = data;
-    let mut config = MatcherConfig::DEFAULT;
+    let mut config = Config::DEFAULT;
     config.ignore_case = data.ignore_case;
     config.normalize = data.normalize;
     let mut matcher = Matcher::new(config);

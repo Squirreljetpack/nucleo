@@ -1,11 +1,11 @@
-use crate::chars::Char;
-use crate::pattern::{CaseMatching, Normalization, Pattern};
-use crate::score::{
+use crate::matcher_inner::chars::Char;
+use crate::matcher_inner::pattern::{CaseMatching, Normalization, Pattern};
+use crate::matcher_inner::score::{
     BONUS_BOUNDARY, BONUS_CAMEL123, BONUS_CONSECUTIVE, BONUS_FIRST_CHAR_MULTIPLIER, BONUS_NON_WORD,
     MAX_PREFIX_BONUS, PENALTY_GAP_EXTENSION, PENALTY_GAP_START, SCORE_MATCH,
 };
-use crate::utf32_str::Utf32Str;
-use crate::{Config, Matcher};
+use crate::matcher_inner::utf32_str::Utf32Str;
+use crate::matcher_inner::{Config, Matcher};
 
 use Algorithm::*;
 
@@ -709,7 +709,7 @@ fn test_prefer_prefix() {
                 "Moby Dick",
                 "md",
                 &[0, 5],
-                BONUS_BOUNDARY_WHITE * (BONUS_FIRST_CHAR_MULTIPLIER + 1)  + MAX_PREFIX_BONUS
+                BONUS_BOUNDARY_WHITE * (BONUS_FIRST_CHAR_MULTIPLIER + 1) + MAX_PREFIX_BONUS
                     - PENALTY_GAP_START
                     - 3 * PENALTY_GAP_EXTENSION,
             ),

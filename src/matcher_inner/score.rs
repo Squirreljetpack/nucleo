@@ -1,7 +1,7 @@
 use std::cmp::max;
 
-use crate::chars::{Char, CharClass};
-use crate::{Config, Matcher};
+use crate::matcher_inner::chars::{Char, CharClass};
+use crate::matcher_inner::{Config, Matcher};
 
 pub(crate) const SCORE_MATCH: u16 = 16;
 pub(crate) const PENALTY_GAP_START: u16 = 3;

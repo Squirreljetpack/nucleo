@@ -1,8 +1,8 @@
 use ::memchr::{memchr, memchr2, memrchr, memrchr2};
 
-use crate::chars::Char;
-use crate::utf32_str::Utf32Str;
-use crate::Matcher;
+use crate::matcher_inner::Matcher;
+use crate::matcher_inner::chars::Char;
+use crate::matcher_inner::utf32_str::Utf32Str;
 
 #[inline(always)]
 fn find_ascii_ignore_case(c: u8, haystack: &[u8]) -> Option<usize> {

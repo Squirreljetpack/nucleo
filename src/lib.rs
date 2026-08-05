@@ -27,18 +27,19 @@ changes in the future.
 
 */
 use std::ops::{Bound, RangeBounds};
-use std::sync::atomic::{self, AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{self, AtomicBool, Ordering};
 use std::time::Duration;
 
 use parking_lot::Mutex;
 use rayon::ThreadPool;
 
+pub use crate::matcher_inner::{Config, Matcher, Utf32Str, Utf32String, chars};
 use crate::pattern::MultiPattern;
 use crate::worker::Worker;
-pub use nucleo_matcher::{chars, Config, Matcher, Utf32Str, Utf32String};
 
 mod boxcar;
+pub mod matcher_inner;
 mod par_sort;
 pub mod pattern;
 mod worker;

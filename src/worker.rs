@@ -1,22 +1,22 @@
 use std::cell::UnsafeCell;
 use std::mem::take;
-use std::sync::atomic::{self, AtomicBool, AtomicU32};
 use std::sync::Arc;
+use std::sync::atomic::{self, AtomicBool, AtomicU32};
 
-use nucleo_matcher::Config;
+use crate::matcher_inner::Config;
 use parking_lot::Mutex;
-use rayon::{prelude::*, ThreadPool};
+use rayon::{ThreadPool, prelude::*};
 
 use crate::par_sort::par_quicksort;
 use crate::pattern::{self, MultiPattern};
-use crate::{boxcar, Match};
+use crate::{Match, boxcar};
 
-struct Matchers(Box<[UnsafeCell<nucleo_matcher::Matcher>]>);
+struct Matchers(Box<[UnsafeCell<crate::matcher_inner::Matcher>]>);
 
 impl Matchers {
     // this is not a true mut from ref, we use a cell here
     #[allow(clippy::mut_from_ref)]
-    unsafe fn get(&self) -> &mut nucleo_matcher::Matcher {
+    unsafe fn get(&self) -> &mut crate::matcher_inner::Matcher {
         &mut *self.0[rayon::current_thread_index().unwrap()].get()
     }
 }
@@ -71,7 +71,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
             .build()
             .expect("creating threadpool failed");
         let matchers = (0..worker_threads)
-            .map(|_| UnsafeCell::new(nucleo_matcher::Matcher::new(config.clone())))
+            .map(|_| UnsafeCell::new(crate::matcher_inner::Matcher::new(config.clone())))
             .collect();
         let worker = Worker {
             running: false,

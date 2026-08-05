@@ -1,12 +1,12 @@
 use std::cmp::max;
 
-use crate::chars::{Char, CharClass};
-use crate::matrix::{MatcherDataView, MatrixCell, ScoreCell};
-use crate::score::{
+use crate::matcher_inner::chars::{Char, CharClass};
+use crate::matcher_inner::matrix::{MatcherDataView, MatrixCell, ScoreCell};
+use crate::matcher_inner::score::{
     BONUS_BOUNDARY, BONUS_CONSECUTIVE, BONUS_FIRST_CHAR_MULTIPLIER, MAX_PREFIX_BONUS,
     PENALTY_GAP_EXTENSION, PENALTY_GAP_START, PREFIX_BONUS_SCALE, SCORE_MATCH,
 };
-use crate::{Config, Matcher};
+use crate::matcher_inner::{Config, Matcher};
 
 impl Matcher {
     pub(crate) fn fuzzy_match_optimal<const INDICES: bool, H: Char + PartialEq<N>, N: Char>(

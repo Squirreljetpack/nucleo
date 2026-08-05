@@ -1,6 +1,12 @@
 # Changelog
 
-# [0.5.0] - 2024-4-2
+# [0.1.0] - 2026-07-08
+
+## **Breaking Changes**
+
+* Published as `matchmaker-nucleo` on crates.io (fork of nucleo with custom sort support).
+* `nucleo-matcher` is now vendored as an internal module instead of a separate crate.
+
 
 ## **Breaking Changes**
 
