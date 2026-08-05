@@ -71,21 +71,23 @@ impl<C: Char> MatrixLayout<C> {
         *mut [ScoreCell],
         *mut [MatrixCell],
     ) {
-        let base = ptr.as_ptr();
-        let haystack = base.add(self.haystack_off) as *mut C;
-        let haystack = slice_from_raw_parts_mut(haystack, self.haystack_len);
-        let bonus = base.add(self.bonus_off);
-        let bonus = slice_from_raw_parts_mut(bonus, self.haystack_len);
-        let rows = base.add(self.rows_off) as *mut u16;
-        let rows = slice_from_raw_parts_mut(rows, self.needle_len);
-        let cells = base.add(self.score_off) as *mut ScoreCell;
-        let cells = slice_from_raw_parts_mut(cells, self.haystack_len + 1 - self.needle_len);
-        let matrix = base.add(self.matrix_off) as *mut MatrixCell;
-        let matrix = slice_from_raw_parts_mut(
-            matrix,
-            (self.haystack_len + 1 - self.needle_len) * self.haystack_len,
-        );
-        (haystack, bonus, rows, cells, matrix)
+        unsafe {
+            let base = ptr.as_ptr();
+            let haystack = base.add(self.haystack_off) as *mut C;
+            let haystack = slice_from_raw_parts_mut(haystack, self.haystack_len);
+            let bonus = base.add(self.bonus_off);
+            let bonus = slice_from_raw_parts_mut(bonus, self.haystack_len);
+            let rows = base.add(self.rows_off) as *mut u16;
+            let rows = slice_from_raw_parts_mut(rows, self.needle_len);
+            let cells = base.add(self.score_off) as *mut ScoreCell;
+            let cells = slice_from_raw_parts_mut(cells, self.haystack_len + 1 - self.needle_len);
+            let matrix = base.add(self.matrix_off) as *mut MatrixCell;
+            let matrix = slice_from_raw_parts_mut(
+                matrix,
+                (self.haystack_len + 1 - self.needle_len) * self.haystack_len,
+            );
+            (haystack, bonus, rows, cells, matrix)
+        }
     }
 }
 

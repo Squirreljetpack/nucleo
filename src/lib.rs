@@ -85,10 +85,10 @@ impl<T> Injector<T> {
     ///
     /// You should favor this function over `push` if at least one of the following is true:
     /// - the number of items you're adding can be computed beforehand and is typically larger
-    ///     than 1k
+    ///   than 1k
     /// - you're able to batch incoming items
     /// - you're adding items from multiple threads concurrently (this function results in less
-    ///     contention)
+    ///   contention)
     pub fn extend<I>(&self, values: I, fill_columns: impl Fn(&T, &mut [Utf32String]))
     where
         I: IntoIterator<Item = T> + ExactSizeIterator,
@@ -113,7 +113,7 @@ impl<T> Injector<T> {
     /// Just because a later index is initialized doesn't mean that this index
     /// is initialized
     pub unsafe fn get_unchecked(&self, index: u32) -> Item<'_, T> {
-        self.items.get_unchecked(index)
+        unsafe { self.items.get_unchecked(index) }
     }
 
     /// Returns a reference to the element at the given index.
@@ -137,6 +137,13 @@ pub struct Status {
     /// Whether the matcher is still processing in the background.
     pub running: bool,
 }
+
+/// A custom sorting function used by [`Nucleo::sort_with`].
+///
+/// The function receives the index and item data of two matched items and
+/// returns `true` if the first should sort before the second (when scores
+/// are equal and, depending on stability, as the primary ordering).
+pub type CustomSortFn<T> = Arc<dyn Fn((u32, &T), (u32, &T)) -> bool + Send + Sync>;
 
 /// A snapshot represent the results of a [`Nucleo`] worker after
 /// finishing a [`tick`](Nucleo::tick).
@@ -214,7 +221,7 @@ impl<T: Sync + Send + 'static> Snapshot<T> {
     /// initialized
     #[inline]
     pub unsafe fn get_item_unchecked(&self, index: u32) -> Item<'_, T> {
-        self.items.get_unchecked(index)
+        unsafe { self.items.get_unchecked(index) }
     }
 
     /// Returns a reference to the item at the given index.
@@ -395,10 +402,7 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
     ///
     /// If `Some(sort_fn)` is provided, the role of index comparison in sorted will use the custom function.
     /// To sort by the given fn, set stability (i.e. to u32::MAX) or else the sort_fn only replaces the index fallback.
-    pub fn sort_with(
-        &mut self,
-        sort_fn: Option<Arc<dyn Fn((u32, &T), (u32, &T)) -> bool + Send + Sync>>,
-    ) {
+    pub fn sort_with(&mut self, sort_fn: Option<CustomSortFn<T>>) {
         self.worker.lock().custom_sort = sort_fn;
     }
 
