@@ -34,7 +34,7 @@ const BUCKETS: u32 = u32::BITS - SKIP_BUCKET;
 const MAX_ENTRIES: u32 = u32::MAX - SKIP;
 
 /// A lock-free, append-only vector.
-pub(crate) struct Vec<T> {
+pub struct Vec<T> {
     /// a counter used to retrieve a unique index to push to.
     ///
     /// this value may be more than the true length as it will
@@ -349,6 +349,66 @@ pub struct Iter<'v, T> {
 impl<T> Iter<'_, T> {
     pub fn end(&self) -> u32 {
         self.end
+    }
+}
+
+impl<'v, T> Vec<T> {
+    /// Returns a safe snapshot iterator starting at index 0.
+    ///
+    /// The iterator snapshots the vector's length at creation time.
+    /// Elements pushed concurrently after creation are not yielded.
+    pub fn iter(&self) -> IterBlocking<'_, T> {
+        // SAFETY: `start` is 0, which is always within bounds (`0 <= end`).
+        // `Iter::next` internally checks the `active` flag for each item,
+        // so uninitialized concurrent pushes safely return `None`.
+        IterBlocking {
+            inner: unsafe { self.snapshot(0) },
+        }
+    }
+}
+
+pub struct IterBlocking<'v, T> {
+    inner: Iter<'v, T>,
+}
+
+impl<'v, T> Iterator for IterBlocking<'v, T> {
+    type Item = (u32, &'v T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Iterate through indices up to self.end
+        let (index, mut item_opt) = self.inner.next()?;
+
+        // If the entry is not active yet, spin-yield until the pushing thread finishes
+        if item_opt.is_none() {
+            let location = Location::of(index);
+            unsafe {
+                let entries = self
+                    .inner
+                    .vec
+                    .buckets
+                    .get_unchecked(location.bucket as usize)
+                    .entries
+                    .load(Ordering::Relaxed);
+
+                // Wait until bucket is allocated (if concurrent extend/push is allocating it)
+                while entries.is_null() {
+                    std::hint::spin_loop();
+                    std::thread::yield_now();
+                }
+
+                let entry = Bucket::get(entries, location.entry, self.inner.vec.columns);
+
+                // Spin until active == true
+                while !(*entry).active.load(Ordering::Acquire) {
+                    std::hint::spin_loop();
+                    std::thread::yield_now();
+                }
+
+                item_opt = Some(Entry::read(entry, self.inner.vec.columns));
+            }
+        }
+
+        Some((index, item_opt.unwrap().data))
     }
 }
 

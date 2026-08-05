@@ -345,6 +345,10 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
         &self.snapshot
     }
 
+    pub fn items(&self) -> Arc<boxcar::Vec<T>> {
+        self.items.clone()
+    }
+
     /// Returns an injector that can be used for adding candidates to the matcher.
     pub fn injector(&self) -> Injector<T> {
         Injector {
