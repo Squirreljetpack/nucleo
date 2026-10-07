@@ -1,14 +1,14 @@
 use std::cmp::max;
 
-use crate::matcher_inner::chars::{Char, CharClass};
-use crate::matcher_inner::matrix::{MatcherDataView, MatrixCell, ScoreCell};
-use crate::matcher_inner::score::{
+use crate::matcher::chars::{Char, CharClass};
+use super::matrix::{MatcherDataView, MatrixCell, ScoreCell};
+use super::score::{
     BONUS_BOUNDARY, BONUS_CONSECUTIVE, BONUS_FIRST_CHAR_MULTIPLIER, MAX_PREFIX_BONUS,
     PENALTY_GAP_EXTENSION, PENALTY_GAP_START, PREFIX_BONUS_SCALE, SCORE_MATCH,
 };
-use crate::matcher_inner::{Config, Matcher};
+use super::{Config, NucleoMatcher};
 
-impl Matcher {
+impl NucleoMatcher {
     pub(crate) fn fuzzy_match_optimal<const INDICES: bool, H: Char + PartialEq<N>, N: Char>(
         &mut self,
         haystack: &[H],

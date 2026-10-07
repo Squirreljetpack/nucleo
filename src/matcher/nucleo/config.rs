@@ -1,5 +1,5 @@
-use crate::matcher_inner::chars::CharClass;
-use crate::matcher_inner::score::BONUS_BOUNDARY;
+use crate::matcher::chars::CharClass;
+use super::score::BONUS_BOUNDARY;
 
 /// Configuration data that controls how a matcher behaves
 #[non_exhaustive]

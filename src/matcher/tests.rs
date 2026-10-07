@@ -1,11 +1,11 @@
-use crate::matcher_inner::chars::Char;
-use crate::matcher_inner::pattern::{CaseMatching, Normalization, Pattern};
-use crate::matcher_inner::score::{
+use crate::matcher::chars::Char;
+use crate::pattern::{CaseMatching, Normalization, Pattern};
+use crate::matcher::nucleo::score::{
     BONUS_BOUNDARY, BONUS_CAMEL123, BONUS_CONSECUTIVE, BONUS_FIRST_CHAR_MULTIPLIER, BONUS_NON_WORD,
     MAX_PREFIX_BONUS, PENALTY_GAP_EXTENSION, PENALTY_GAP_START, SCORE_MATCH,
 };
-use crate::matcher_inner::utf32_str::Utf32Str;
-use crate::matcher_inner::{Config, Matcher};
+use crate::matcher::utf32_str::Utf32Str;
+use crate::matcher::{Config, Matcher, NucleoMatcher, frizbee};
 
 use Algorithm::*;
 
@@ -36,7 +36,7 @@ fn assert_matches(
     if path {
         config.set_match_paths();
     }
-    let mut matcher = Matcher::new(config);
+    let mut matcher = NucleoMatcher::new(config);
     let mut matched_indices = Vec::new();
     let mut needle_buf = Vec::new();
     let mut haystack_buf = Vec::new();
@@ -768,4 +768,22 @@ fn umlaut() {
     let matches = Pattern::parse("e", CaseMatching::Ignore, Normalization::Smart)
         .match_list(paths, &mut matcher);
     assert_eq!(matches.len(), 2);
+}
+
+#[test]
+fn frizbee_matcher_integration() {
+    let mut matcher = Matcher::new_frizbee(frizbee::Config::default());
+    let mut buf = Vec::new();
+    let haystack = Utf32Str::new("hello_world", &mut buf);
+    let mut needle_buf = Vec::new();
+    let needle = Utf32Str::new("hw", &mut needle_buf);
+
+    let score = matcher.fuzzy_match(haystack, needle);
+    assert!(score.is_some());
+    assert!(score.unwrap() > 0);
+
+    let mut indices = Vec::new();
+    let score_with_indices = matcher.fuzzy_indices(haystack, needle, &mut indices);
+    assert_eq!(score, score_with_indices);
+    assert_eq!(indices, vec![0, 6]);
 }

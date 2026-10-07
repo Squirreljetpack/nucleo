@@ -34,12 +34,45 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use rayon::ThreadPool;
 
-pub use crate::matcher_inner::{Config, Matcher, Utf32Str, Utf32String, chars};
+pub use crate::matcher::{
+    Config, FrizbeeMatcher, Matcher, NucleoMatcher, Utf32Str, Utf32String, chars, frizbee,
+};
 use crate::pattern::MultiPattern;
 use crate::worker::Worker;
 
+/// The fuzzy matching backend algorithm to use.
+#[derive(Debug, Clone)]
+pub enum MatcherBackend {
+    /// Nucleo's default algorithm: Smith-Waterman with matrix slab,
+    /// full atom syntax support (^prefix, postfix$, 'exact, !inverse),
+    /// and grapheme clustering.
+    Nucleo(Config),
+
+    /// Frizbee's SIMD Smith-Waterman algorithm with affine gaps,
+    /// fast prefiltering, and configurable typo resistance.
+    Frizbee(frizbee::Config),
+}
+
+impl Default for MatcherBackend {
+    fn default() -> Self {
+        Self::Nucleo(Config::DEFAULT)
+    }
+}
+
+impl From<Config> for MatcherBackend {
+    fn from(config: Config) -> Self {
+        Self::Nucleo(config)
+    }
+}
+
+impl From<frizbee::Config> for MatcherBackend {
+    fn from(config: frizbee::Config) -> Self {
+        Self::Frizbee(config)
+    }
+}
+
 mod boxcar;
-pub mod matcher_inner;
+pub mod matcher;
 mod par_sort;
 pub mod pattern;
 mod worker;
@@ -152,6 +185,7 @@ pub struct Snapshot<T: Sync + Send + 'static> {
     matches: Vec<Match>,
     pattern: MultiPattern,
     items: Arc<boxcar::Vec<T>>,
+    backend: MatcherBackend,
 }
 
 impl<T: Sync + Send + 'static> Snapshot<T> {
@@ -165,9 +199,15 @@ impl<T: Sync + Send + 'static> Snapshot<T> {
         self.item_count = worker.item_count();
         self.pattern.clone_from(&worker.pattern);
         self.matches.clone_from(&worker.matches);
+        self.backend = worker.backend.clone();
         if !Arc::ptr_eq(&worker.items, &self.items) {
             self.items = worker.items.clone()
         }
+    }
+
+    /// Returns the backend configuration used for this snapshot.
+    pub fn backend(&self) -> &MatcherBackend {
+        &self.backend
     }
 
     /// Returns that total number of items
@@ -251,6 +291,20 @@ impl<T: Sync + Send + 'static> Snapshot<T> {
         // snapshot.
         unsafe { Some(self.get_item_unchecked(self.matches.get(n as usize)?.idx)) }
     }
+
+    /// Computes the match indices for a given column of an item against the current snapshot's pattern.
+    pub fn indices(
+        &self,
+        column: usize,
+        item: &Item<'_, T>,
+        matcher: &mut Matcher,
+        indices: &mut Vec<u32>,
+    ) -> Option<u32> {
+        matcher.ensure_backend(&self.backend);
+        self.pattern
+            .column_pattern(column)
+            .indices(item.matcher_columns.get(column)?.slice(..), matcher, indices)
+    }
 }
 
 #[repr(u8)]
@@ -321,7 +375,23 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
         num_threads: Option<usize>,
         columns: u32,
     ) -> Self {
-        let (pool, worker) = Worker::new(num_threads, config, notify.clone(), columns);
+        Self::new_with_backend(
+            MatcherBackend::Nucleo(config),
+            notify,
+            num_threads,
+            columns,
+        )
+    }
+
+    /// Constructs a new `nucleo` worker threadpool with the provided `backend`.
+    pub fn new_with_backend(
+        backend: MatcherBackend,
+        notify: Arc<dyn Fn() + Sync + Send>,
+        num_threads: Option<usize>,
+        columns: u32,
+    ) -> Self {
+        let (pool, worker) =
+            Worker::new_with_backend(num_threads, backend, notify.clone(), columns);
         Self {
             canceled: worker.canceled.clone(),
             should_notify: worker.should_notify.clone(),
@@ -333,12 +403,18 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
                 pattern: MultiPattern::new(columns as usize),
                 item_count: 0,
                 items: worker.items.clone(),
+                backend: worker.backend.clone(),
             },
             worker: Arc::new(Mutex::new(worker)),
             state: State::Init,
             notify,
             resort_needed: false,
         }
+    }
+
+    /// Returns the fuzzy matching backend in use.
+    pub fn backend(&self) -> &MatcherBackend {
+        self.snapshot.backend()
     }
 
     /// Returns the total number of active injectors
@@ -388,6 +464,11 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
     /// Update the internal configuration.
     pub fn update_config(&mut self, config: Config) {
         self.worker.lock().update_config(config)
+    }
+
+    /// Update the internal matching backend configuration.
+    pub fn update_backend(&mut self, backend: MatcherBackend) {
+        self.worker.lock().update_backend(backend)
     }
 
     // Set whether the matcher should sort search results by score after

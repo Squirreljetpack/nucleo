@@ -1,4 +1,4 @@
-use crate::matcher_inner::{Utf32Str, Utf32String};
+use crate::matcher::{Utf32Str, Utf32String};
 
 #[test]
 fn test_utf32str_ascii() {

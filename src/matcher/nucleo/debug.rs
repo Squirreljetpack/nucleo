@@ -1,4 +1,4 @@
-use crate::matcher_inner::matrix::{MatrixCell, ScoreCell};
+use super::matrix::{MatrixCell, ScoreCell};
 use std::fmt::{Debug, Formatter, Result};
 
 impl Debug for ScoreCell {

@@ -4,7 +4,7 @@ use std::mem::size_of;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::ptr::{NonNull, slice_from_raw_parts_mut};
 
-use crate::matcher_inner::chars::Char;
+use crate::matcher::chars::Char;
 
 const MAX_MATRIX_SIZE: usize = 100 * 1024; // 100*1024 = 100KB
 

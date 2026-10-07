@@ -1,8 +1,6 @@
-pub use crate::matcher_inner::pattern::{Atom, AtomKind, CaseMatching, Normalization, Pattern};
-use crate::matcher_inner::{Matcher, Utf32String};
-
-#[cfg(test)]
-mod tests;
+use super::atom::{CaseMatching, Normalization};
+use super::single::Pattern;
+use crate::matcher::{Matcher, Utf32String};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Default)]
 pub(crate) enum Status {
@@ -49,9 +47,7 @@ impl MultiPattern {
     }
 
     /// Reparses a column. By specifying `append` the caller promises that text passed
-    /// to the previous `reparse` invocation is a prefix of `new_text`. This enables
-    /// additional optimizations but can lead to missing matches if an incorrect value
-    /// is passed.
+    /// to the previous `reparse` invocation is a prefix of `new_text`.
     pub fn reparse(
         &mut self,
         column: usize,
@@ -97,7 +93,6 @@ impl MultiPattern {
     }
 
     pub fn score(&self, haystack: &[Utf32String], matcher: &mut Matcher) -> Option<u32> {
-        // TODO: column weights as a feature?
         let mut score = 0;
         for ((pattern, _, variant), haystack) in self.cols.iter().zip(haystack) {
             let fallback = matches!(variant, Variant::Optional).then_some(0);

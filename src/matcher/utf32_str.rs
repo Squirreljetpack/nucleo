@@ -7,7 +7,7 @@ use std::{fmt, slice};
 
 use memchr::memmem;
 
-use crate::matcher_inner::chars;
+use crate::matcher::chars;
 
 /// Check if a given string can be represented internally as the `Ascii` variant in a
 /// [`Utf32String`] or a [`Utf32Str`].

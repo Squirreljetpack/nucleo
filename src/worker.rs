@@ -3,7 +3,7 @@ use std::mem::take;
 use std::sync::Arc;
 use std::sync::atomic::{self, AtomicBool, AtomicU32};
 
-use crate::matcher_inner::Config;
+use crate::matcher::Config;
 use parking_lot::Mutex;
 use rayon::{ThreadPool, prelude::*};
 
@@ -11,12 +11,12 @@ use crate::par_sort::par_quicksort;
 use crate::pattern::{self, MultiPattern};
 use crate::{CustomSortFn, Match, boxcar};
 
-struct Matchers(Box<[UnsafeCell<crate::matcher_inner::Matcher>]>);
+struct Matchers(Box<[UnsafeCell<crate::matcher::Matcher>]>);
 
 impl Matchers {
     // this is not a true mut from ref, we use a cell here
     #[allow(clippy::mut_from_ref)]
-    unsafe fn get(&self) -> &mut crate::matcher_inner::Matcher {
+    unsafe fn get(&self) -> &mut crate::matcher::Matcher {
         unsafe { &mut *self.0[rayon::current_thread_index().unwrap()].get() }
     }
 }
@@ -39,6 +39,7 @@ pub(crate) struct Worker<T: Sync + Send + 'static> {
     pub(crate) items: Arc<boxcar::Vec<T>>,
     in_flight: Vec<u32>,
     pub(crate) custom_sort: Option<CustomSortFn<T>>,
+    pub(crate) backend: crate::MatcherBackend,
 }
 
 impl<T: Sync + Send + 'static> Worker<T> {
@@ -46,8 +47,13 @@ impl<T: Sync + Send + 'static> Worker<T> {
         self.last_snapshot - self.in_flight.len() as u32
     }
     pub(crate) fn update_config(&mut self, config: Config) {
+        self.update_backend(crate::MatcherBackend::Nucleo(config));
+    }
+    pub(crate) fn update_backend(&mut self, backend: crate::MatcherBackend) {
+        self.backend = backend.clone();
         for matcher in self.matchers.0.iter_mut() {
-            matcher.get_mut().config = config.clone();
+            let m = matcher.get_mut();
+            m.ensure_backend(&backend);
         }
     }
     pub(crate) fn sort_results(&mut self, stability_threshold: u32) {
@@ -57,9 +63,24 @@ impl<T: Sync + Send + 'static> Worker<T> {
         self.reverse_items = reverse_items;
     }
 
+    #[allow(dead_code)]
     pub(crate) fn new(
         worker_threads: Option<usize>,
         config: Config,
+        notify: Arc<dyn Fn() + Sync + Send>,
+        cols: u32,
+    ) -> (ThreadPool, Self) {
+        Self::new_with_backend(
+            worker_threads,
+            crate::MatcherBackend::Nucleo(config),
+            notify,
+            cols,
+        )
+    }
+
+    pub(crate) fn new_with_backend(
+        worker_threads: Option<usize>,
+        backend: crate::MatcherBackend,
         notify: Arc<dyn Fn() + Sync + Send>,
         cols: u32,
     ) -> (ThreadPool, Self) {
@@ -71,7 +92,10 @@ impl<T: Sync + Send + 'static> Worker<T> {
             .build()
             .expect("creating threadpool failed");
         let matchers = (0..worker_threads)
-            .map(|_| UnsafeCell::new(crate::matcher_inner::Matcher::new(config.clone())))
+            .map(|_| {
+                let matcher = crate::matcher::Matcher::new_with_backend(backend.clone());
+                UnsafeCell::new(matcher)
+            })
             .collect();
         let worker = Worker {
             running: false,
@@ -89,6 +113,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
             items: Arc::new(boxcar::Vec::with_capacity(2 * 1024, cols)),
             in_flight: Vec::with_capacity(64),
             custom_sort: None,
+            backend,
         };
         (pool, worker)
     }

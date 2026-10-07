@@ -1,7 +1,7 @@
 use std::cmp::max;
 
-use crate::matcher_inner::chars::{Char, CharClass};
-use crate::matcher_inner::{Config, Matcher};
+use crate::matcher::chars::{Char, CharClass};
+use super::{Config, NucleoMatcher};
 
 pub(crate) const SCORE_MATCH: u16 = 16;
 pub(crate) const PENALTY_GAP_START: u16 = 3;
@@ -73,7 +73,7 @@ impl Config {
         }
     }
 }
-impl Matcher {
+impl NucleoMatcher {
     #[inline(always)]
     pub(crate) fn bonus_for(&self, prev_class: CharClass, class: CharClass) -> u16 {
         self.config.bonus_for(prev_class, class)

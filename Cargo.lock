@@ -158,3 +158,23 @@ name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[patch.unused]]
+name = "cli_boilerplate_automation"
+version = "0.7.0"
+
+[[patch.unused]]
+name = "matchmaker-lib"
+version = "0.1.6"
+
+[[patch.unused]]
+name = "matchmaker-minus"
+version = "5.7.201"
+
+[[patch.unused]]
+name = "matchmaker-partial"
+version = "0.1.4"
+
+[[patch.unused]]
+name = "matchmaker-partial-macros"
+version = "0.1.4"

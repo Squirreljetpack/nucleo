@@ -1,8 +1,8 @@
 use ::memchr::{memchr, memchr2, memrchr, memrchr2};
 
-use crate::matcher_inner::Matcher;
-use crate::matcher_inner::chars::Char;
-use crate::matcher_inner::utf32_str::Utf32Str;
+use crate::matcher::chars::Char;
+use crate::matcher::utf32_str::Utf32Str;
+use super::NucleoMatcher;
 
 #[inline(always)]
 fn find_ascii_ignore_case(c: u8, haystack: &[u8]) -> Option<usize> {
@@ -22,7 +22,7 @@ fn find_ascii_ignore_case_rev(c: u8, haystack: &[u8]) -> Option<usize> {
     }
 }
 
-impl Matcher {
+impl NucleoMatcher {
     pub(crate) fn prefilter_ascii(
         &self,
         mut haystack: &[u8],

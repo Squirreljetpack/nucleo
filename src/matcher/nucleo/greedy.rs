@@ -1,7 +1,7 @@
-use crate::matcher_inner::Matcher;
-use crate::matcher_inner::chars::Char;
+use crate::matcher::chars::Char;
+use super::NucleoMatcher;
 
-impl Matcher {
+impl NucleoMatcher {
     /// greedy fallback algorithm, much faster (linear time) but reported scores/indicies
     /// might not be the best match
     pub(crate) fn fuzzy_match_greedy_<const INDICES: bool, H: Char + PartialEq<N>, N: Char>(
