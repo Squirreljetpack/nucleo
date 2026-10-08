@@ -113,8 +113,6 @@ pub struct Config {
     /// The maximum number of characters missing from the needle, before an item in the
     /// haystack is filtered out
     pub max_typos: Option<u16>,
-    /// Sort the results by score (descending)
-    pub sort: bool,
     /// Controls the scoring used by the smith waterman algorithm.
     pub scoring: Scoring,
 }
@@ -123,7 +121,6 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             max_typos: Some(0),
-            sort: true,
             scoring: Scoring::default(),
         }
     }
@@ -178,8 +175,8 @@ fn utf32_eq_ignore_case(a: Utf32Str<'_>, b: Utf32Str<'_>) -> bool {
         (Utf32Str::Ascii(a), Utf32Str::Ascii(b)) => a.eq_ignore_ascii_case(b),
         _ => a
             .chars()
-            .map(|c| c.to_ascii_lowercase())
-            .eq(b.chars().map(|c| c.to_ascii_lowercase())),
+            .map(crate::matcher::chars::to_lower_case)
+            .eq(b.chars().map(crate::matcher::chars::to_lower_case)),
     }
 }
 
@@ -191,10 +188,24 @@ fn utf32_contains_ignore_case(haystack: Utf32Str<'_>, needle: Utf32Str<'_>) -> b
         (Utf32Str::Ascii(h), Utf32Str::Ascii(n)) => {
             h.windows(n.len()).any(|w| w.eq_ignore_ascii_case(n))
         }
+        (Utf32Str::Unicode(h), Utf32Str::Unicode(n)) => h.windows(n.len()).any(|w| {
+            w.iter()
+                .zip(n.iter())
+                .all(|(&hc, &nc)| crate::matcher::chars::to_lower_case(hc) == crate::matcher::chars::to_lower_case(nc))
+        }),
         _ => {
-            let n_chars: Vec<char> = needle.chars().map(|c| c.to_ascii_lowercase()).collect();
-            let h_chars: Vec<char> = haystack.chars().map(|c| c.to_ascii_lowercase()).collect();
-            h_chars.windows(n_chars.len()).any(|w| w == n_chars.as_slice())
+            let n_len = needle.len();
+            for i in 0..=haystack.len() - n_len {
+                if haystack
+                    .slice(i..i + n_len)
+                    .chars()
+                    .zip(needle.chars())
+                    .all(|(hc, nc)| crate::matcher::chars::to_lower_case(hc) == crate::matcher::chars::to_lower_case(nc))
+                {
+                    return true;
+                }
+            }
+            false
         }
     }
 }
@@ -212,7 +223,7 @@ impl Clone for FrizbeeMatcher {
     fn clone(&self) -> Self {
         FrizbeeMatcher {
             config: self.config.clone(),
-            matcher: matcher::Matcher::new("", &self.config),
+            matcher: matcher::Matcher::new(&self.matcher.needle, &self.config),
             haystack_bytes_buf: Vec::new(),
             needle_bytes_buf: Vec::new(),
         }
@@ -261,12 +272,12 @@ impl FrizbeeMatcher {
                 }
             }
             Utf32Str::Unicode(chars) => {
-                self.needle_bytes_buf.clear();
-                for &c in chars {
-                    let mut b = [0u8; 4];
-                    self.needle_bytes_buf.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
-                }
-                if self.matcher.needle.as_bytes() != self.needle_bytes_buf.as_slice() {
+                if !self.matcher.needle.chars().eq(chars.iter().copied()) {
+                    self.needle_bytes_buf.clear();
+                    for &c in chars {
+                        let mut b = [0u8; 4];
+                        self.needle_bytes_buf.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
+                    }
                     if let Ok(s) = std::str::from_utf8(&self.needle_bytes_buf) {
                         self.matcher.set_needle(s);
                     }
@@ -281,19 +292,33 @@ impl FrizbeeMatcher {
             return Some(0);
         }
         self.ensure_needle(needle);
-        let m = match haystack {
-            Utf32Str::Ascii(bytes) => {
-                self.matcher.smith_waterman_one(bytes, 0, false)?
-            }
+        let haystack_bytes = match haystack {
+            Utf32Str::Ascii(bytes) => bytes,
             Utf32Str::Unicode(chars) => {
                 self.haystack_bytes_buf.clear();
                 for &c in chars {
                     let mut b = [0u8; 4];
                     self.haystack_bytes_buf.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
                 }
-                self.matcher.smith_waterman_one(&self.haystack_bytes_buf, 0, false)?
+                &self.haystack_bytes_buf
             }
         };
+
+        let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
+            let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
+            if haystack_bytes.len() < min_len {
+                return None;
+            }
+            let (matched, skipped) = self.matcher.prefilter.match_haystack(haystack_bytes, max_typos);
+            if !matched {
+                return None;
+            }
+            skipped
+        } else {
+            0
+        };
+
+        let m = self.matcher.smith_waterman_one(haystack_bytes, 0, skipped_chunks == 0)?;
         Some(m.score)
     }
 
@@ -310,7 +335,20 @@ impl FrizbeeMatcher {
         self.ensure_needle(needle);
         match haystack {
             Utf32Str::Ascii(bytes) => {
-                let m = self.matcher.smith_waterman_indices_one(bytes, 0, 0, false)?;
+                let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
+                    let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
+                    if bytes.len() < min_len {
+                        return None;
+                    }
+                    let (matched, skipped) = self.matcher.prefilter.match_haystack(bytes, max_typos);
+                    if !matched {
+                        return None;
+                    }
+                    skipped
+                } else {
+                    0
+                };
+                let m = self.matcher.smith_waterman_indices_one(bytes, skipped_chunks, 0, skipped_chunks == 0)?;
                 indices.extend(m.indices.into_iter().rev().map(|i| i as u32));
                 Some(m.score)
             }
@@ -320,7 +358,21 @@ impl FrizbeeMatcher {
                     let mut b = [0u8; 4];
                     self.haystack_bytes_buf.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
                 }
-                let m = self.matcher.smith_waterman_indices_one(&self.haystack_bytes_buf, 0, 0, false)?;
+                let bytes = &self.haystack_bytes_buf;
+                let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
+                    let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
+                    if bytes.len() < min_len {
+                        return None;
+                    }
+                    let (matched, skipped) = self.matcher.prefilter.match_haystack(bytes, max_typos);
+                    if !matched {
+                        return None;
+                    }
+                    skipped
+                } else {
+                    0
+                };
+                let m = self.matcher.smith_waterman_indices_one(bytes, skipped_chunks, 0, skipped_chunks == 0)?;
                 let mut byte_pos = 0;
                 let mut char_map = Vec::with_capacity(chars.len());
                 for (c_idx, &c) in chars.iter().enumerate() {
@@ -331,7 +383,9 @@ impl FrizbeeMatcher {
                 for &byte_idx in m.indices.iter().rev() {
                     for (range, c_idx) in &char_map {
                         if range.contains(&byte_idx) {
-                            indices.push(*c_idx);
+                            if indices.last() != Some(c_idx) {
+                                indices.push(*c_idx);
+                            }
                             break;
                         }
                     }

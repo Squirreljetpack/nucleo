@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use crate::matcher::Config;
-
-use crate::Nucleo;
+use crate::{Nucleo, Utf32Str};
 
 #[test]
 fn active_injector_count() {
@@ -143,4 +142,59 @@ fn frizbee_backend_e2e() {
     while nucleo.tick(50).running {}
     let snapshot2 = nucleo.snapshot();
     assert_eq!(snapshot2.matches().len(), 2);
+}
+
+#[test]
+fn reverse_items_sorting() {
+    let mut nucleo: Nucleo<String> = Nucleo::new(Config::DEFAULT, Arc::new(|| ()), Some(1), 1);
+    nucleo.reverse_items(true);
+
+    let injector = nucleo.injector();
+    injector.push("pear".to_string(), |s, cols| cols[0] = s.clone().into());
+    injector.push("plum".to_string(), |s, cols| cols[0] = s.clone().into());
+    injector.push("kiwi".to_string(), |s, cols| cols[0] = s.clone().into());
+
+    while nucleo.tick(50).running {}
+
+    let snapshot = nucleo.snapshot();
+    let matches = snapshot.matches();
+    assert_eq!(matches.len(), 3);
+    // When reversed, items with equal score/length sort by index descending: kiwi (idx 2), plum (idx 1), pear (idx 0)
+    assert_eq!(snapshot.get_item(matches[0].idx).unwrap().data, "kiwi");
+    assert_eq!(snapshot.get_item(matches[1].idx).unwrap().data, "plum");
+    assert_eq!(snapshot.get_item(matches[2].idx).unwrap().data, "pear");
+}
+
+#[test]
+fn frizbee_unicode_indices_dedup() {
+    let mut matcher = crate::Matcher::new_frizbee(crate::matcher::frizbee::Config::default());
+    let mut buf = Vec::new();
+    let haystack = Utf32Str::new("café latte", &mut buf);
+    let mut needle_buf = Vec::new();
+    let needle = Utf32Str::new("fé", &mut needle_buf);
+
+    let mut indices = Vec::new();
+    let score = matcher.fuzzy_indices(haystack, needle, &mut indices);
+    assert!(score.is_some());
+    // 'f' is at char index 2, 'é' is at char index 3 (2 bytes in UTF-8).
+    // indices must not contain duplicate 3s.
+    assert_eq!(&indices, &[2, 3]);
+}
+
+#[test]
+fn frizbee_greedy_indices_order() {
+    let mut matcher = crate::Matcher::new_frizbee(crate::matcher::frizbee::Config::default());
+    // Construct haystack longer than MAX_HAYSTACK_LEN (512 bytes)
+    let long_prefix = "a".repeat(600);
+    let full = format!("{long_prefix}xyz");
+    let mut buf = Vec::new();
+    let haystack = Utf32Str::new(&full, &mut buf);
+    let mut needle_buf = Vec::new();
+    let needle = Utf32Str::new("xyz", &mut needle_buf);
+
+    let mut indices = Vec::new();
+    let score = matcher.fuzzy_indices(haystack, needle, &mut indices);
+    assert!(score.is_some());
+    // Indices must be in ascending order even with greedy fallback
+    assert_eq!(&indices, &[600, 601, 602]);
 }

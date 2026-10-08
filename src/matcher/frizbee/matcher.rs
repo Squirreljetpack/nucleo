@@ -52,11 +52,7 @@ impl Matcher {
 
         let mut matches = vec![];
         self.match_list_into(haystacks, 0, &mut matches);
-
-        if self.config.sort {
-            matches.sort_unstable();
-        }
-
+        matches.sort_unstable();
         matches
     }
 
@@ -69,11 +65,7 @@ impl Matcher {
 
         let mut matches = vec![];
         self.match_list_indices_into(haystacks, 0, &mut matches);
-
-        if self.config.sort {
-            matches.sort_unstable();
-        }
-
+        matches.sort_unstable();
         matches
     }
 
