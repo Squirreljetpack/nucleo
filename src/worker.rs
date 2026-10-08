@@ -299,8 +299,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
                                 item2.matcher_columns.iter().map(|h| h.len() as u32).sum();
 
                             if len1 == len2 {
-                                custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
-                                    ^ self.reverse_items
+                                if self.reverse_items {
+                                    custom_sort((m2.idx, item2.data), (m1.idx, item1.data))
+                                } else {
+                                    custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
+                                }
                             } else {
                                 len1 < len2
                             }
@@ -315,7 +318,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
                     execute_sort!(|m1, m2| {
                         let item1 = self.items.get_unchecked(m1.idx);
                         let item2 = self.items.get_unchecked(m2.idx);
-                        custom_sort((m1.idx, item1.data), (m2.idx, item2.data)) ^ self.reverse_items
+                        if self.reverse_items {
+                            custom_sort((m2.idx, item2.data), (m1.idx, item1.data))
+                        } else {
+                            custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
+                        }
                     })
                 }
 
@@ -327,8 +334,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
                         if s1 == s2 {
                             let item1 = self.items.get_unchecked(m1.idx);
                             let item2 = self.items.get_unchecked(m2.idx);
-                            custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
-                                ^ self.reverse_items
+                            if self.reverse_items {
+                                custom_sort((m2.idx, item2.data), (m1.idx, item1.data))
+                            } else {
+                                custom_sort((m1.idx, item1.data), (m2.idx, item2.data))
+                            }
                         } else {
                             s1 > s2
                         }
@@ -351,7 +361,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
                                 item2.matcher_columns.iter().map(|h| h.len() as u32).sum();
 
                             if len1 == len2 {
-                                (m1.idx < m2.idx) ^ self.reverse_items
+                                if self.reverse_items {
+                                    m2.idx < m1.idx
+                                } else {
+                                    m1.idx < m2.idx
+                                }
                             } else {
                                 len1 < len2
                             }
@@ -363,7 +377,13 @@ impl<T: Sync + Send + 'static> Worker<T> {
 
                 // Variant 5: Idx based
                 (None, u32::MAX) => {
-                    execute_sort!(|m1, m2| (m1.idx < m2.idx) ^ self.reverse_items)
+                    execute_sort!(|m1, m2| {
+                        if self.reverse_items {
+                            m2.idx < m1.idx
+                        } else {
+                            m1.idx < m2.idx
+                        }
+                    })
                 }
 
                 // Variant 6: Threshold (Idx)
@@ -372,7 +392,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
                         let s1 = m1.score / t;
                         let s2 = m2.score / t;
                         if s1 == s2 {
-                            (m1.idx < m2.idx) ^ self.reverse_items
+                            if self.reverse_items {
+                                m2.idx < m1.idx
+                            } else {
+                                m1.idx < m2.idx
+                            }
                         } else {
                             s1 > s2
                         }
