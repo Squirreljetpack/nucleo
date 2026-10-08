@@ -382,18 +382,25 @@ impl<'v, T> Iterator for IterBlocking<'v, T> {
         if item_opt.is_none() {
             let location = Location::of(index);
             unsafe {
-                let entries = self
+                let mut entries = self
                     .inner
                     .vec
                     .buckets
                     .get_unchecked(location.bucket as usize)
                     .entries
-                    .load(Ordering::Relaxed);
+                    .load(Ordering::Acquire);
 
                 // Wait until bucket is allocated (if concurrent extend/push is allocating it)
                 while entries.is_null() {
                     std::hint::spin_loop();
                     std::thread::yield_now();
+                    entries = self
+                        .inner
+                        .vec
+                        .buckets
+                        .get_unchecked(location.bucket as usize)
+                        .entries
+                        .load(Ordering::Acquire);
                 }
 
                 let entry = Bucket::get(entries, location.entry, self.inner.vec.columns);
