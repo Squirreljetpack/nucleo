@@ -93,7 +93,7 @@ impl<'a> AlignmentPathIter<'a> {
                 return chunk_idx * 16 + idx;
             }
         }
-        panic!("could not find max score in score matrix final row");
+        0
     }
 
     #[inline(always)]

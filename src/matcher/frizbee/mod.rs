@@ -291,6 +291,9 @@ impl FrizbeeMatcher {
         if needle.is_empty() {
             return Some(0);
         }
+        if haystack.is_empty() {
+            return None;
+        }
         self.ensure_needle(needle);
         let haystack_bytes = match haystack {
             Utf32Str::Ascii(bytes) => bytes,
@@ -303,6 +306,10 @@ impl FrizbeeMatcher {
                 &self.haystack_bytes_buf
             }
         };
+
+        if haystack_bytes.is_empty() {
+            return None;
+        }
 
         let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
             let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
@@ -318,6 +325,12 @@ impl FrizbeeMatcher {
             0
         };
 
+        let chunk_offset = skipped_chunks * 16;
+        if chunk_offset >= haystack_bytes.len() {
+            return None;
+        }
+        let haystack_bytes = &haystack_bytes[chunk_offset..];
+
         let m = self.matcher.smith_waterman_one(haystack_bytes, 0, skipped_chunks == 0)?;
         Some(m.score)
     }
@@ -332,9 +345,15 @@ impl FrizbeeMatcher {
         if needle.is_empty() {
             return Some(0);
         }
+        if haystack.is_empty() {
+            return None;
+        }
         self.ensure_needle(needle);
         match haystack {
             Utf32Str::Ascii(bytes) => {
+                if bytes.is_empty() {
+                    return None;
+                }
                 let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
                     let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
                     if bytes.len() < min_len {
@@ -348,17 +367,28 @@ impl FrizbeeMatcher {
                 } else {
                     0
                 };
-                let m = self.matcher.smith_waterman_indices_one(bytes, skipped_chunks, 0, skipped_chunks == 0)?;
+                let chunk_offset = skipped_chunks * 16;
+                if chunk_offset >= bytes.len() {
+                    return None;
+                }
+                let slice = &bytes[chunk_offset..];
+                let m = self.matcher.smith_waterman_indices_one(slice, skipped_chunks, 0, skipped_chunks == 0)?;
                 indices.extend(m.indices.into_iter().rev().map(|i| i as u32));
                 Some(m.score)
             }
             Utf32Str::Unicode(chars) => {
+                if chars.is_empty() {
+                    return None;
+                }
                 self.haystack_bytes_buf.clear();
                 for &c in chars {
                     let mut b = [0u8; 4];
                     self.haystack_bytes_buf.extend_from_slice(c.encode_utf8(&mut b).as_bytes());
                 }
                 let bytes = &self.haystack_bytes_buf;
+                if bytes.is_empty() {
+                    return None;
+                }
                 let skipped_chunks = if let Some(max_typos) = self.config.max_typos {
                     let min_len = self.matcher.needle.len().saturating_sub(max_typos as usize);
                     if bytes.len() < min_len {
@@ -372,7 +402,12 @@ impl FrizbeeMatcher {
                 } else {
                     0
                 };
-                let m = self.matcher.smith_waterman_indices_one(bytes, skipped_chunks, 0, skipped_chunks == 0)?;
+                let chunk_offset = skipped_chunks * 16;
+                if chunk_offset >= bytes.len() {
+                    return None;
+                }
+                let slice = &bytes[chunk_offset..];
+                let m = self.matcher.smith_waterman_indices_one(slice, skipped_chunks, 0, skipped_chunks == 0)?;
                 let mut byte_pos = 0;
                 let mut char_map = Vec::with_capacity(chars.len());
                 for (c_idx, &c) in chars.iter().enumerate() {

@@ -52,6 +52,9 @@ impl<Simd128: Vector128Expansion<Simd256>, Simd256: Vector256>
 
     #[inline(always)]
     pub fn match_haystack(&mut self, haystack: &[u8], max_typos: Option<u16>) -> Option<u16> {
+        if haystack.is_empty() {
+            return None;
+        }
         if haystack.len() > MAX_HAYSTACK_LEN {
             return match_greedy(self.needle.as_bytes(), haystack, &self.scoring)
                 .map(|(score, _)| score);
@@ -71,6 +74,9 @@ impl<Simd128: Vector128Expansion<Simd256>, Simd256: Vector256>
         skipped_chunks: usize,
         max_typos: Option<u16>,
     ) -> Option<(u16, Vec<usize>)> {
+        if haystack.is_empty() {
+            return None;
+        }
         if haystack.len() > MAX_HAYSTACK_LEN {
             return match_greedy(self.needle.as_bytes(), haystack, &self.scoring);
         }
@@ -97,6 +103,9 @@ impl<Simd128: Vector128Expansion<Simd256>, Simd256: Vector256>
 
     #[inline(always)]
     pub fn score_haystack(&mut self, haystack: &[u8]) -> u16 {
+        if haystack.is_empty() {
+            return 0;
+        }
         if haystack.len() > MAX_HAYSTACK_LEN {
             return match_greedy(self.needle.as_bytes(), haystack, &self.scoring)
                 .map(|(score, _)| score)
