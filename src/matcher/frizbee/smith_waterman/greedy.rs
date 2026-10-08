@@ -93,6 +93,7 @@ pub fn match_greedy(
         return None;
     }
 
+    indices.reverse();
     Some((score, indices))
 }
 
