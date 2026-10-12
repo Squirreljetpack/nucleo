@@ -1,3 +1,221 @@
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update deps
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+- Fix lints
+
+## [0.1.1] - 2026-10-12
+
+### 🚀 Features
+
+- Score weighting by initial index, optional columns
+- Add get_stability
+- Custom sort
+- Sort + sort_threshold matrix support
+- Update deps + make items public
+- Fork into new crate
+- Frizbee backend
+
+### 🐛 Bug Fixes
+
+- *(boxcar)* Reload bucket entries and acquire ordering in IterBlocking
+- *(sort)* Swap operands when reverse_items is true to preserve strict weak ordering
+- *(frizbee)* Reverse greedy match indices to match reverse-order contract
+- *(frizbee)* Enable SIMD prefilter, deduplicate unicode indices, and cache needle
+- *(pattern)* Allow purely negative patterns to match while preserving optional fallback filtering
+- *(frizbee)* Fix out-of-bounds write in Matrix::zero
+- *(frizbee)* Safely handle empty haystacks and slice skipped chunk offsets
+
+### 💼 Other
+
+- Update dependencies
+- *(bench)* Point nucleo dependency to matchmaker-nucleo package
+
+### 🎨 Styling
+
+- Lints
+
 # Changelog
 
 # [0.1.0] - 2026-07-08
