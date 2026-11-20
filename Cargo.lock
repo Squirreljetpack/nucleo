@@ -68,7 +68,7 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "matchmaker-nucleo"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "log",
  "memchr",
@@ -161,20 +161,24 @@ checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
 
 [[patch.unused]]
 name = "cli_boilerplate_automation"
-version = "0.7.0"
+version = "0.8.3"
 
 [[patch.unused]]
 name = "matchmaker-lib"
-version = "0.1.6"
+version = "0.1.9"
 
 [[patch.unused]]
 name = "matchmaker-minus"
-version = "5.7.201"
+version = "5.7.204"
+
+[[patch.unused]]
+name = "matchmaker-mlua-bindings"
+version = "0.1.9"
 
 [[patch.unused]]
 name = "matchmaker-partial"
-version = "0.1.4"
+version = "0.1.9"
 
 [[patch.unused]]
 name = "matchmaker-partial-macros"
-version = "0.1.4"
+version = "0.1.9"

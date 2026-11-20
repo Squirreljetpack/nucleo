@@ -1,3 +1,10 @@
+## [0.1.2] - 2026-11-20
+
+### 🐛 Bug Fixes
+
+- *(frizbee)* Compile on targets without a SIMD kernel: a scalar `Prefilter`, and a `SmithWatermanMatcher` backed by the greedy linker with approximate scores
+- *(frizbee)* Gate the SIMD alignment-path iterator to x86_64 and aarch64
+
 ## [0.1.1] - 2026-10-12
 
 ### 🚀 Features
