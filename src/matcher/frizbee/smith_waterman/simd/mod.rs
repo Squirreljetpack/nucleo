@@ -15,6 +15,7 @@ pub use alignment_iter::{Alignment, AlignmentPathIter};
 
 /// SIMD Smith Waterman matcher with affine gaps and sequential layout parallelism.
 /// Chooses the fastest algorithm via runtime feature detection.
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 #[derive(Debug, Clone)]
 pub enum SmithWatermanMatcher {
     #[cfg(target_arch = "x86_64")]
@@ -25,6 +26,7 @@ pub enum SmithWatermanMatcher {
     NEON(SmithWatermanMatcherNEON),
 }
 
+#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 impl SmithWatermanMatcher {
     pub fn new(needle: &[u8], scoring: &Scoring) -> Self {
         #[cfg(target_arch = "x86_64")]
@@ -137,6 +139,53 @@ impl SmithWatermanMatcher {
             #[cfg(target_arch = "aarch64")]
             Self::NEON(matcher) => unsafe { matcher.print_score_matrix(haystack) },
         }
+    }
+}
+
+/// Smith Waterman fallback for architectures without a SIMD kernel (wasm).
+/// Uses the linear-time greedy linker, so scores are approximate.
+#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+#[derive(Debug, Clone)]
+pub struct SmithWatermanMatcher {
+    needle: Vec<u8>,
+    scoring: Scoring,
+}
+
+#[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+impl SmithWatermanMatcher {
+    pub fn new(needle: &[u8], scoring: &Scoring) -> Self {
+        Self {
+            needle: needle.to_vec(),
+            scoring: scoring.clone(),
+        }
+    }
+
+    pub fn match_haystack(&mut self, haystack: &[u8], max_typos: Option<u16>) -> Option<u16> {
+        let (score, _) = super::greedy::match_greedy(&self.needle, haystack, &self.scoring)?;
+        self.check_typos(haystack, max_typos)?;
+        Some(score)
+    }
+
+    pub fn match_haystack_indices(
+        &mut self,
+        haystack: &[u8],
+        _skipped_chunks: usize,
+        max_typos: Option<u16>,
+    ) -> Option<(u16, Vec<usize>)> {
+        let (score, indices) = super::greedy::match_greedy(&self.needle, haystack, &self.scoring)?;
+        self.check_typos(haystack, max_typos)?;
+        Some((score, indices))
+    }
+
+    pub fn score_haystack(&mut self, haystack: &[u8]) -> u16 {
+        super::greedy::match_greedy(&self.needle, haystack, &self.scoring)
+            .map(|(score, _)| score)
+            .unwrap_or(0)
+    }
+
+    fn check_typos(&self, haystack: &[u8], max_typos: Option<u16>) -> Option<()> {
+        let max_typos = max_typos? as usize;
+        (self.needle.len() <= haystack.len() + max_typos).then_some(())
     }
 }
 

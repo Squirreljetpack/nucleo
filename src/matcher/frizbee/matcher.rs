@@ -287,6 +287,7 @@ impl Matcher {
             })
     }
 
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
     #[inline(always)]
     pub fn iter_alignment_path(&self, skipped_chunks: usize, score: u16) -> AlignmentPathIter<'_> {
         self.smith_waterman

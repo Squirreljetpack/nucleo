@@ -64,21 +64,33 @@ pub enum Prefilter {
     SSE(x86_64::PrefilterSSE),
     #[cfg(target_arch = "aarch64")]
     NEON(aarch64::PrefilterNEON),
+    /// Scalar fallback for architectures without a SIMD prefilter.
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    Scalar(Vec<(u8, u8)>),
 }
 
 impl Prefilter {
     pub fn new(needle: &[u8]) -> Self {
         #[cfg(target_arch = "x86_64")]
-        if x86_64::PrefilterAVX::is_available() {
-            Prefilter::AVX(unsafe { x86_64::PrefilterAVX::new(needle) })
-        } else if x86_64::PrefilterSSE::is_available() {
-            Prefilter::SSE(unsafe { x86_64::PrefilterSSE::new(needle) })
-        } else {
-            panic!("no prefilter algorithm available due to missing SSE2 support");
+        {
+            if x86_64::PrefilterAVX::is_available() {
+                Prefilter::AVX(unsafe { x86_64::PrefilterAVX::new(needle) })
+            } else if x86_64::PrefilterSSE::is_available() {
+                Prefilter::SSE(unsafe { x86_64::PrefilterSSE::new(needle) })
+            } else {
+                panic!("no prefilter algorithm available due to missing SSE2 support");
+            }
         }
 
         #[cfg(target_arch = "aarch64")]
-        Prefilter::NEON(aarch64::PrefilterNEON::new(needle))
+        {
+            Prefilter::NEON(aarch64::PrefilterNEON::new(needle))
+        }
+
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            Prefilter::Scalar(case_needle(needle))
+        }
     }
 
     /// Checks if the needle is wholly contained in the haystack, ignoring the exact order of the
@@ -108,6 +120,12 @@ impl Prefilter {
             (Prefilter::NEON(p), 0) => unsafe { p.match_haystack(haystack) },
             #[cfg(target_arch = "aarch64")]
             (Prefilter::NEON(p), _) => unsafe { p.match_haystack_typos(haystack, max_typos) },
+            #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+            (Prefilter::Scalar(needle), 0) => (scalar::match_haystack(needle, haystack), 0),
+            #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+            (Prefilter::Scalar(needle), _) => {
+                (scalar::match_haystack_typos(needle, haystack, max_typos), 0)
+            }
         }
     }
 }
